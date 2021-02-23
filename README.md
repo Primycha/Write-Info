@@ -19,4 +19,5 @@ Write-Info -Text "Operation was successfull!" -LogName "ImportantTask" -TextColo
 
 ### Logging error message with the log name already specified with a variable
 $LogName = "ImportantTask"
+
 Write-Info "Operation failed!" -Error
