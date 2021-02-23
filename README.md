@@ -21,3 +21,6 @@ Write-Info -Text "Operation was successfull!" -LogName "ImportantTask" -TextColo
 $LogName = "ImportantTask"
 
 Write-Info "Operation failed!" -Error
+
+## Blog post discussing this function on TechMeAway
+https://techmeaway.net/2021/02/23/no-need-for-excuses-lets-get-logging/
