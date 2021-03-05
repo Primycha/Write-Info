@@ -9,6 +9,8 @@ Builds its own file structure for the log files.
 Write-Info "User $samaccountname has been added successfully to the group $group!" -TextColor "Green"
 .EXAMPLE
 Write-Info "Error when adding user $samaccountname to the group $group. " -Error
+.EXAMPLE
+Write-Info "User $samaccountname has been added successfully to the group $group!" -AsCMTrace
 .INPUTS
 Inputs to this cmdlet (if any)
 .OUTPUTS
@@ -35,6 +37,9 @@ function Write-Info{
         ,
         [Parameter(ParameterSetName = "Warning")]
         [Switch]$Warning
+        ,
+        [Parameter(ParameterSetName = "AsCMTrace")]
+        [Switch]$AsCMTrace
         ,
         [Alias("ForegroundColor")] # Helps with converting scripts from Write-Host to Write-Info
         [Validateset("Yellow","DarkYellow","Red","DarkRed","Cyan","DarkCyan","White","Green","DarkGreen","Gray","DarkGray","Blue","DarkBlue","Magenta","DarkMagenta","Black")]
@@ -71,6 +76,7 @@ function Write-Info{
     $Date = Get-Date -f "yyyy-MM-dd HH:mm:ss"
     $Computername = $env:COMPUTERNAME
     $Username = $env:USERNAME
+    [int]$CMTraceType = 1
 
     # Categories
     if($Error){ $Category = "ERROR" }
@@ -107,7 +113,10 @@ function Write-Info{
     }
 
     # This is changed below if the Error switch has been toggled
-    $outputPath = "$LogPath\$LogName.txt"
+    # Use .log extension for cmtrace format otherwise use .txt
+    if($AsCMTrace){ $ext = "log" }
+    else { $ext = "txt" }
+    $outputPath = "$LogPath\$LogName.$ext"
     Write-Verbose "OutputPath set to $outputPath"
 
     ## What actions will be taken based on switches used
@@ -117,6 +126,7 @@ function Write-Info{
         [Bool]$WriteToFile = $true
         [Bool]$WriteToConsole = $true
         [Bool]$WriteToGUI = $true
+        [int]$CMTraceType = 3
 
         $RTBSelectionColor = "Red"
 
@@ -126,13 +136,18 @@ function Write-Info{
         }
 
         # Change the output path from the default
-        $outputPath = "$errorLogPath\$LogName.txt"
+        
+        # Use .log extension for cmtrace format otherwise use .txt
+        if($AsCMTrace){ $ext = "log" }
+        else { $ext = "txt" }
+        $outputPath = "$errorLogPath\$LogName.$ext"
     }
     # Warning
     elseif($Warning){
         [Bool]$WriteToFile = $true
         [Bool]$WriteToConsole = $true
         [Bool]$WriteToGUI = $true
+        [int]$CMTraceType = 2
 
         $RTBSelectionColor = "Orange"
     }
@@ -157,7 +172,22 @@ function Write-Info{
 
     # Write to log file
     if($WriteToFile){
-        "[$Date][$Computername][$Username][$Category] $Text"| Out-File -FilePath $outputPath -Append -Encoding default
+        # Write in CMTrace format
+        if($AsCMTrace){
+            "<![LOG[$Text]LOG]!>" +`
+            "<time=`"$(Get-Date -Format "HH:mm:ss.ffffff")`" " +`
+            "date=`"$(Get-Date -Format "M-d-yyyy")`" " +`
+            "component=`"$($MyInvocation.ScriptName)`" " +`
+            "context=`"$([System.Security.Principal.WindowsIdentity]::GetCurrent().Name)`" " +`
+            "type=`"$Type`" " +`
+            "thread=`"$([Threading.Thread]::CurrentThread.ManagedThreadId)`" " +`
+            "file=`"`">"| Out-File -FilePath $outputPath -Append -Encoding default
+        }
+        # Write in regular format
+        else
+        {
+            "[$Date][$Computername][$Username][$Category] $Text"| Out-File -FilePath $outputPath -Append -Encoding default
+        }
     }
 
     # Write to Console
